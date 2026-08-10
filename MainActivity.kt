@@ -555,17 +555,17 @@ fun AppNavigation(viewModel: ExchangeViewModel = viewModel()) {
             Screen.P2PInspector -> P2PInspectorScreen { viewModel.navigateTo(Screen.Menu) }
 
             // Menú 2: Pesos / Bolívares
-            Screen.PesosBolivaresMenu -> PesosBolivaresMenuScreen { viewModel.navigateTo(it) }
+            Screen.PesosBolivaresMenu -> PesosBolivaresMenuScreen(rates) { viewModel.navigateTo(it) }
             Screen.PesosABolivares -> PesosToBolivaresScreen(rates, gananciaPB, { viewModel.updateGananciaPB(it) }) { viewModel.navigateTo(Screen.PesosBolivaresMenu) }
             Screen.BolivaresAPesos -> BolivaresToPesosScreen(rates, gananciaBP, { viewModel.updateGananciaBP(it) }) { viewModel.navigateTo(Screen.PesosBolivaresMenu) }
 
             // Menú 3: Bolívares / Pesos
-            Screen.BolivaresPesosMenu -> BolivaresPesosMenuScreen { viewModel.navigateTo(it) }
+            Screen.BolivaresPesosMenu -> BolivaresPesosMenuScreen(rates) { viewModel.navigateTo(it) }
             Screen.VenColBolivaresAPesos -> VenColBolivaresAPesosScreen(rates, gananciaVenCol, { viewModel.updateGananciaVenCol(it) }) { viewModel.navigateTo(Screen.BolivaresPesosMenu) }
             Screen.VenColPesosABolivares -> VenColPesosABolivaresScreen(rates, gananciaVenCol, { viewModel.updateGananciaVenCol(it) }) { viewModel.navigateTo(Screen.BolivaresPesosMenu) }
 
             // Menú 4: USDT
-            Screen.CombinedMenu -> CombinedMenuScreen { viewModel.navigateTo(it) }
+            Screen.CombinedMenu -> CombinedMenuScreen(rates) { viewModel.navigateTo(it) }
             Screen.PesosAUsdt -> PesosToUsdtScreen(rates) { viewModel.navigateTo(Screen.CombinedMenu) }
             Screen.BolivaresAUsdt -> BolivaresToUsdtScreen(rates) { viewModel.navigateTo(Screen.CombinedMenu) }
             Screen.UsdtAPesos -> UsdtToPesosScreen(rates) { viewModel.navigateTo(Screen.CombinedMenu) }
@@ -591,24 +591,43 @@ fun abrirWhatsAppConComprobante(context: Context, numero: String, mensaje: Strin
 // --- PANTALLA: MENÚ PRINCIPAL ---
 @Composable
 fun MainMenu(rates: MarketRates, onNavigate: (Screen) -> Unit, onExit: () -> Unit) {
+    var showInfoModal by remember { mutableStateOf(false) }
+
     Box(modifier = Modifier.fillMaxSize().background(FondoOscuro)) {
-        if (rates.compraPesos > 0.0 && rates.compraBolivar > 0.0) {
-            AnimatedVisibility(visible = true, enter = fadeIn(tween(1000)), modifier = Modifier.fillMaxWidth().align(Alignment.TopCenter).padding(top = 32.dp, start = 16.dp, end = 16.dp)) {
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
-                    Column(horizontalAlignment = Alignment.Start) {
-                        Text("📊 MERCADO Y BCV", color = Color(0xFFFFD700), fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                        Text("Compra COP: ${rates.compraPesos}", color = TextoGris, fontSize = 10.sp)
-                        Text("Venta COP: ${rates.ventaPesos}", color = TextoGris, fontSize = 10.sp)
-                        Text("Compra VES: ${rates.compraBolivar}", color = TextoGris, fontSize = 10.sp)
-                        Text("Venta VES: ${rates.ventaBolivar}", color = TextoGris, fontSize = 10.sp)
-                        Text("Tasa BCV: ${rates.bcv}", color = TextoGris, fontSize = 10.sp)
+
+        // MODAL ANIMADO CON LA INFORMACIÓN
+        if (showInfoModal) {
+            Dialog(onDismissRequest = { showInfoModal = false }) {
+                AnimatedVisibility(
+                    visible = showInfoModal,
+                    enter = scaleIn(animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)) + fadeIn(),
+                    exit = scaleOut() + fadeOut()
+                ) {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF1E2329)),
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier.fillMaxWidth().padding(16.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                            MercadoBcvInfo(rates = rates, modifier = Modifier.fillMaxWidth())
+                            Spacer(modifier = Modifier.height(20.dp))
+                            Button(
+                                onClick = { showInfoModal = false },
+                                colors = ButtonDefaults.buttonColors(containerColor = BotonLila, contentColor = Color.Black),
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("Cerrar", fontWeight = FontWeight.Bold)
+                            }
+                        }
                     }
                 }
             }
         }
 
+        // MENÚ DE OPCIONES
         Column(
-            modifier = Modifier.fillMaxSize().padding(top = 100.dp, bottom = 40.dp, start = 24.dp, end = 24.dp),
+            modifier = Modifier.fillMaxSize().padding(top = 40.dp, bottom = 40.dp, start = 24.dp, end = 24.dp).verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center
         ) {
             val infiniteTransition = rememberInfiniteTransition(label = "title_animation")
@@ -632,16 +651,35 @@ fun MainMenu(rates: MarketRates, onNavigate: (Screen) -> Unit, onExit: () -> Uni
             AnimatedMenuButton("🪙 4. USDT (Restantes)", 400) { onNavigate(Screen.CombinedMenu) }
             Spacer(modifier = Modifier.height(8.dp))
             AnimatedMenuButton("🚪 5. SALIR DEL PROGRAMA 👋", 500) { onExit() }
+
+            // BOTÓN DE MERCADO Y BCV (DEBAJO DE LA OPCIÓN 5)
+            if (rates.compraPesos > 0.0 && rates.compraBolivar > 0.0) {
+                Spacer(modifier = Modifier.height(48.dp)) // Espacio de separación
+                Button(
+                    onClick = { showInfoModal = true },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF7FFFD4), // Color Aguamarina
+                        contentColor = Color.Black
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("📊 MERCADO Y BCV", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                }
+            }
         }
     }
 }
 
 // --- SUBMENÚS ---
 @Composable
-fun PesosBolivaresMenuScreen(onNavigate: (Screen) -> Unit) {
+fun PesosBolivaresMenuScreen(rates: MarketRates, onNavigate: (Screen) -> Unit) {
     BackHandler { onNavigate(Screen.Menu) }
     Box(modifier = Modifier.fillMaxSize().background(FondoOscuro)) {
-        Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+        if (rates.compraPesos > 0.0) {
+            MercadoBcvInfo(rates = rates, modifier = Modifier.align(Alignment.TopStart).padding(top = 32.dp, start = 24.dp))
+        }
+
+        Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = 120.dp, start = 24.dp, end = 24.dp, bottom = 24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
             Text("💱", fontSize = 56.sp)
             Spacer(modifier = Modifier.height(16.dp))
             Text("Pesos / Bolívares", fontWeight = FontWeight.Bold, fontSize = 24.sp, color = TextoBlanco, textAlign = TextAlign.Center)
@@ -658,10 +696,14 @@ fun PesosBolivaresMenuScreen(onNavigate: (Screen) -> Unit) {
 }
 
 @Composable
-fun BolivaresPesosMenuScreen(onNavigate: (Screen) -> Unit) {
+fun BolivaresPesosMenuScreen(rates: MarketRates, onNavigate: (Screen) -> Unit) {
     BackHandler { onNavigate(Screen.Menu) }
     Box(modifier = Modifier.fillMaxSize().background(FondoOscuro)) {
-        Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+        if (rates.compraPesos > 0.0) {
+            MercadoBcvInfo(rates = rates, modifier = Modifier.align(Alignment.TopStart).padding(top = 32.dp, start = 24.dp))
+        }
+
+        Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = 120.dp, start = 24.dp, end = 24.dp, bottom = 24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
             Text("💱", fontSize = 56.sp)
             Spacer(modifier = Modifier.height(16.dp))
             Text("Bolívares / Pesos", fontWeight = FontWeight.Bold, fontSize = 24.sp, color = TextoBlanco, textAlign = TextAlign.Center)
@@ -678,10 +720,14 @@ fun BolivaresPesosMenuScreen(onNavigate: (Screen) -> Unit) {
 }
 
 @Composable
-fun CombinedMenuScreen(onNavigate: (Screen) -> Unit) {
+fun CombinedMenuScreen(rates: MarketRates, onNavigate: (Screen) -> Unit) {
     BackHandler { onNavigate(Screen.Menu) }
     Box(modifier = Modifier.fillMaxSize().background(FondoOscuro)) {
-        Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+        if (rates.compraPesos > 0.0) {
+            MercadoBcvInfo(rates = rates, modifier = Modifier.align(Alignment.TopStart).padding(top = 32.dp, start = 24.dp))
+        }
+
+        Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = 120.dp, start = 24.dp, end = 24.dp, bottom = 24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
             Text("🪙", fontSize = 56.sp)
             Spacer(modifier = Modifier.height(16.dp))
             Text("Operaciones\ncon USDT", fontWeight = FontWeight.Bold, fontSize = 24.sp, color = TextoBlanco, textAlign = TextAlign.Center)
@@ -714,14 +760,17 @@ fun PesosToBolivaresScreen(rates: MarketRates, ganancia: Double, onUpdateGananci
     var profitCop by remember { mutableStateOf(0.0) }
     var profitUsdt by remember { mutableStateOf(0.0) }
 
-    // FÓRMULA EXACTA DEL EXCEL (COL -> VEN): Venta Pesos / Venta Bolívares
     val tasaNeta = if (rates.ventaBolivar > 0) rates.ventaPesos / rates.ventaBolivar else 0.0
     val tasaDelDia = tasaNeta + (tasaNeta * (ganancia / 100.0))
     val dfCop = DecimalFormat("#,###", DecimalFormatSymbols(Locale.GERMAN))
     val dfBs = DecimalFormat("#,###.##", DecimalFormatSymbols(Locale.GERMAN))
 
     Column(modifier = Modifier.fillMaxSize().background(FondoOscuro).verticalScroll(rememberScrollState()).padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+
+        MercadoBcvInfo(rates = rates, modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp))
+        HorizontalDivider(color = Color(0xFF2B3139), modifier = Modifier.padding(bottom = 16.dp))
+
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Column(horizontalAlignment = Alignment.Start) {
                 Text("⚙️ Ajustar Margen", color = Color(0xFFFFD700), fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(8.dp))
@@ -779,14 +828,17 @@ fun BolivaresToPesosScreen(rates: MarketRates, ganancia: Double, onUpdateGananci
     var profitCop by remember { mutableStateOf(0.0) }
     var profitUsdt by remember { mutableStateOf(0.0) }
 
-    // FÓRMULA EXACTA DEL VIDEO (COL -> VEN): Venta Pesos / Venta Bolívares
     val tasaNeta = if (rates.ventaBolivar > 0) rates.ventaPesos / rates.ventaBolivar else 0.0
     val tasaDelDia = tasaNeta + (tasaNeta * (ganancia / 100.0))
     val dfCop = DecimalFormat("#,###", DecimalFormatSymbols(Locale.GERMAN))
     val dfBs = DecimalFormat("#,###.##", DecimalFormatSymbols(Locale.GERMAN))
 
     Column(modifier = Modifier.fillMaxSize().background(FondoOscuro).verticalScroll(rememberScrollState()).padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+
+        MercadoBcvInfo(rates = rates, modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp))
+        HorizontalDivider(color = Color(0xFF2B3139), modifier = Modifier.padding(bottom = 16.dp))
+
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Column(horizontalAlignment = Alignment.Start) {
                 Text("⚙️ Ajustar Margen", color = Color(0xFFFFD700), fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(8.dp))
@@ -845,14 +897,17 @@ fun VenColBolivaresAPesosScreen(rates: MarketRates, ganancia: Double, onUpdateGa
     var profitCop by remember { mutableStateOf(0.0) }
     var profitUsdt by remember { mutableStateOf(0.0) }
 
-    // FÓRMULA EXACTA DEL VIDEO (VEN -> COL): Compra Bolívares / Venta Pesos
     val tasaNeta = if (rates.ventaPesos > 0) rates.compraBolivar / rates.ventaPesos else 0.0
     val tasaDelDia = tasaNeta * (1 + (ganancia / 100.0))
     val dfCop = DecimalFormat("#,###", DecimalFormatSymbols(Locale.GERMAN))
     val dfBs = DecimalFormat("#,###.##", DecimalFormatSymbols(Locale.GERMAN))
 
     Column(modifier = Modifier.fillMaxSize().background(FondoOscuro).verticalScroll(rememberScrollState()).padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+
+        MercadoBcvInfo(rates = rates, modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp))
+        HorizontalDivider(color = Color(0xFF2B3139), modifier = Modifier.padding(bottom = 16.dp))
+
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Column(horizontalAlignment = Alignment.Start) {
                 Text("⚙️ Ajustar Margen", color = Color(0xFFFFD700), fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(8.dp))
@@ -910,13 +965,16 @@ fun VenColPesosABolivaresScreen(rates: MarketRates, ganancia: Double, onUpdateGa
     var profitCop by remember { mutableStateOf(0.0) }
     var profitUsdt by remember { mutableStateOf(0.0) }
 
-    // FÓRMULA EXACTA DEL VIDEO (VEN -> COL): Compra Bolívares / Venta Pesos
     val tasaNeta = if (rates.ventaPesos > 0) rates.compraBolivar / rates.ventaPesos else 0.0
     val tasaDelDia = tasaNeta * (1 + (ganancia / 100.0))
     val dfCop = DecimalFormat("#,###", DecimalFormatSymbols(Locale.GERMAN))
     val dfBs = DecimalFormat("#,###.##", DecimalFormatSymbols(Locale.GERMAN))
 
     Column(modifier = Modifier.fillMaxSize().background(FondoOscuro).verticalScroll(rememberScrollState()).padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+
+        MercadoBcvInfo(rates = rates, modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp))
+        HorizontalDivider(color = Color(0xFF2B3139), modifier = Modifier.padding(bottom = 16.dp))
+
         Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Column(horizontalAlignment = Alignment.Start) {
                 Text("⚙️ Ajustar Margen", color = Color(0xFFFFD700), fontSize = 14.sp, fontWeight = FontWeight.Bold)
@@ -962,7 +1020,6 @@ fun VenColPesosABolivaresScreen(rates: MarketRates, ganancia: Double, onUpdateGa
         PaymentSection("BOLIVARES", resultText.isNotEmpty(), enviarMensaje, recibirMensaje)
     }
 }
-
 // --- PANTALLAS MENORES USDT ---
 @Composable
 fun PesosToUsdtScreen(rates: MarketRates, onBack: () -> Unit) {
@@ -972,7 +1029,10 @@ fun PesosToUsdtScreen(rates: MarketRates, onBack: () -> Unit) {
     var noteText by remember { mutableStateOf("") }
 
     Column(modifier = Modifier.fillMaxSize().background(FondoOscuro).verticalScroll(rememberScrollState()).padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Spacer(modifier = Modifier.height(32.dp))
+        MercadoBcvInfo(rates = rates, modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp))
+        HorizontalDivider(color = Color(0xFF2B3139), modifier = Modifier.padding(bottom = 16.dp))
+        Spacer(modifier = Modifier.height(16.dp))
+
         CalcRow("🇨🇴 ¿Cuántos Pesos tienes? 🪙", inputAmount, { inputAmount = it; resultText = ""; noteText = "" }) {
             val amount = inputAmount.toDoubleOrNull() ?: 0.0
             if (amount > 0 && rates.compraPesos > 0) {
@@ -995,7 +1055,10 @@ fun BolivaresToUsdtScreen(rates: MarketRates, onBack: () -> Unit) {
     var noteText by remember { mutableStateOf("") }
 
     Column(modifier = Modifier.fillMaxSize().background(FondoOscuro).verticalScroll(rememberScrollState()).padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Spacer(modifier = Modifier.height(32.dp))
+        MercadoBcvInfo(rates = rates, modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp))
+        HorizontalDivider(color = Color(0xFF2B3139), modifier = Modifier.padding(bottom = 16.dp))
+        Spacer(modifier = Modifier.height(16.dp))
+
         CalcRow("🇻🇪 ¿Cuántos Bolívares tienes? 🪙", inputAmount, { inputAmount = it; resultText = ""; noteText = "" }) {
             val amount = inputAmount.toDoubleOrNull() ?: 0.0
             if (amount > 0 && rates.compraBolivar > 0) {
@@ -1018,7 +1081,10 @@ fun UsdtToPesosScreen(rates: MarketRates, onBack: () -> Unit) {
     var noteText by remember { mutableStateOf("") }
 
     Column(modifier = Modifier.fillMaxSize().background(FondoOscuro).verticalScroll(rememberScrollState()).padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Spacer(modifier = Modifier.height(32.dp))
+        MercadoBcvInfo(rates = rates, modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp))
+        HorizontalDivider(color = Color(0xFF2B3139), modifier = Modifier.padding(bottom = 16.dp))
+        Spacer(modifier = Modifier.height(16.dp))
+
         CalcRow("🪙 ¿Cuántos USDT venderás? 🇨🇴", inputAmount, { inputAmount = it; resultText = ""; noteText = "" }) {
             val amount = inputAmount.toDoubleOrNull() ?: 0.0
             if (amount > 0 && rates.ventaPesos > 0) {
@@ -1042,7 +1108,10 @@ fun UsdtToBolivaresScreen(rates: MarketRates, onBack: () -> Unit) {
     var noteText by remember { mutableStateOf("") }
 
     Column(modifier = Modifier.fillMaxSize().background(FondoOscuro).verticalScroll(rememberScrollState()).padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Spacer(modifier = Modifier.height(32.dp))
+        MercadoBcvInfo(rates = rates, modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp))
+        HorizontalDivider(color = Color(0xFF2B3139), modifier = Modifier.padding(bottom = 16.dp))
+        Spacer(modifier = Modifier.height(16.dp))
+
         CalcRow("🪙 ¿Cuántos USDT venderás? 🇻🇪", inputAmount, { inputAmount = it; resultText = ""; noteText = "" }) {
             val amount = inputAmount.toDoubleOrNull() ?: 0.0
             if (amount > 0 && rates.ventaBolivar > 0) {
@@ -1309,7 +1378,6 @@ fun P2PInspectorScreen(onBack: () -> Unit) {
     }
 }
 
-// --- DIÁLOGOS Y COMPONENTES REUTILIZABLES ---
 @Composable
 fun MerchantCalculatorDialog(offer: P2PInspectorOffer, selectedFiat: String, tradeType: String, onDismiss: () -> Unit) {
     var fiatInput by remember { mutableStateOf("") }
@@ -1565,6 +1633,19 @@ fun MerchantProfileDialog(offer: P2PInspectorOffer, viewModel: P2PInspectorViewM
 }
 
 // --- UTILIDADES GRÁFICAS Y COMPONENTES VISUALES ---
+
+@Composable
+fun MercadoBcvInfo(rates: MarketRates, modifier: Modifier = Modifier) {
+    Column(horizontalAlignment = Alignment.Start, modifier = modifier) {
+        Text("📊 MERCADO Y BCV", color = Color(0xFFFFD700), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(4.dp))
+        Text("Compra COP: ${rates.compraPesos}", color = TextoGris, fontSize = 10.sp)
+        Text("Venta COP: ${rates.ventaPesos}", color = TextoGris, fontSize = 10.sp)
+        Text("Compra VES: ${rates.compraBolivar}", color = TextoGris, fontSize = 10.sp)
+        Text("Venta VES: ${rates.ventaBolivar}", color = TextoGris, fontSize = 10.sp)
+        Text("Tasa BCV: ${rates.bcv}", color = TextoGris, fontSize = 10.sp)
+    }
+}
 
 @Composable
 fun FilterChipCustom(text: String, isSelected: Boolean, onClick: () -> Unit) {
