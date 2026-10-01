@@ -1,0 +1,44 @@
+package com.example.cambialoactualizado.ui.screens
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.example.cambialoactualizado.ui.theme.BotonLila
+import com.example.cambialoactualizado.ui.theme.FondoOscuro
+import com.example.cambialoactualizado.ui.theme.TextoBlanco
+
+@Composable
+fun LoadingScreen() {
+    Column(
+        modifier = Modifier.fillMaxSize().background(FondoOscuro),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        CircularProgressIndicator(
+            color = BotonLila,
+            strokeWidth = 6.dp,
+            modifier = Modifier.size(80.dp)
+        )
+        Spacer(modifier = Modifier.height(32.dp))
+        Text(
+            "Buscando la mejor tasa del mercado...",
+            color = TextoBlanco,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center
+        )
+    }
+}
