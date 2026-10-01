@@ -27,5 +27,9 @@ val bankOptionsByFiat = mapOf(
     "VES" to listOf(
         "PagoMovil", "Banesco", "Mercantil", "Provincial", "Bancamiga",
         "BBVA_Provincial", "Banco_de_Venezuela", "BNC", "BOD"
+    ),
+    "BRL" to listOf(
+        "PIX", "Nubank", "PicPay", "Banco_Inter", "Banco_do_Brasil",
+        "Itau", "Bradesco", "Caixa", "Santander", "Transferencia_Bancaria"
     )
 )
