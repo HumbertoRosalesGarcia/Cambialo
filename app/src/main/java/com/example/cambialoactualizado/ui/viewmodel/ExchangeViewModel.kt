@@ -18,6 +18,13 @@ import java.io.InputStreamReader
 import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URI
+import java.security.SecureRandom
+import java.security.cert.X509Certificate
+import javax.net.ssl.HostnameVerifier
+import javax.net.ssl.HttpsURLConnection
+import javax.net.ssl.SSLContext
+import javax.net.ssl.TrustManager
+import javax.net.ssl.X509TrustManager
 
 class ExchangeViewModel : ViewModel() {
     private val _rates = MutableStateFlow(MarketRates())
@@ -34,6 +41,9 @@ class ExchangeViewModel : ViewModel() {
 
     private val _gananciaVenCol = MutableStateFlow(25.0)
     val gananciaVenCol: StateFlow<Double> = _gananciaVenCol
+
+    private var lastBcvFetchTime: Long = 0L
+    private var cachedBcv: Double = 0.0
 
     init {
         viewModelScope.launch(Dispatchers.IO) {
@@ -112,21 +122,97 @@ class ExchangeViewModel : ViewModel() {
     }
 
     private fun obtenerTasaBCV(): Double {
-        var tasa = 0.0
+        val now = System.currentTimeMillis()
+        if (cachedBcv > 0.0 && (now - lastBcvFetchTime) < 10 * 60 * 1000L) {
+            return cachedBcv
+        }
+
+        // 1. Consulta directa al portal oficial del Banco Central de Venezuela
+        try {
+            val trustAllCerts = arrayOf<TrustManager>(object : X509TrustManager {
+                override fun getAcceptedIssuers(): Array<X509Certificate>? = null
+                override fun checkClientTrusted(certs: Array<X509Certificate>?, authType: String?) {}
+                override fun checkServerTrusted(certs: Array<X509Certificate>?, authType: String?) {}
+            })
+            val sslContext = SSLContext.getInstance("TLS")
+            sslContext.init(null, trustAllCerts, SecureRandom())
+
+            val url = URI("https://www.bcv.org.ve/").toURL()
+            val conn = url.openConnection() as HttpsURLConnection
+            conn.sslSocketFactory = sslContext.socketFactory
+            conn.hostnameVerifier = HostnameVerifier { _, _ -> true }
+            conn.requestMethod = "GET"
+            conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+            conn.connectTimeout = 8000
+            conn.readTimeout = 8000
+
+            if (conn.responseCode == HttpURLConnection.HTTP_OK) {
+                val html = BufferedReader(InputStreamReader(conn.inputStream)).use { it.readText() }
+                val regex = """id=["']dolar["'][\s\S]*?<strong class=["']strong-tb["']>\s*([0-9.,]+)\s*</strong>""".toRegex(RegexOption.IGNORE_CASE)
+                val match = regex.find(html)
+                if (match != null) {
+                    val rawValue = match.groups[1]?.value ?: ""
+                    val clean = rawValue.replace(".", "").replace(",", ".")
+                    val parsed = clean.toDoubleOrNull()
+                    if (parsed != null && parsed > 0.0) {
+                        cachedBcv = parsed
+                        lastBcvFetchTime = now
+                        return parsed
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+        // 2. Consulta al backend propio en VPS
         try {
             val url = URI("$LOCAL_API_URL/api/bcv").toURL()
             val conn = url.openConnection() as HttpURLConnection
             conn.requestMethod = "GET"
             conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Android; Mobile)")
-            conn.connectTimeout = 10000
-            conn.readTimeout = 10000
+            conn.connectTimeout = 5000
+            conn.readTimeout = 5000
 
             if (conn.responseCode == HttpURLConnection.HTTP_OK) {
                 val response = BufferedReader(InputStreamReader(conn.inputStream)).use { it.readText() }
                 val json = JSONObject(response)
-                if (json.optString("code") == "000000") tasa = json.optDouble("tasa", 0.0)
+                if (json.optString("code") == "000000") {
+                    val t = json.optDouble("tasa", 0.0)
+                    if (t > 0.0) {
+                        cachedBcv = t
+                        lastBcvFetchTime = now
+                        return t
+                    }
+                }
             }
-        } catch (e: Exception) { e.printStackTrace() }
-        return tasa
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+        // 3. Fallback a API pública del BCV (DolarApi oficial)
+        try {
+            val url = URI("https://ve.dolarapi.com/v1/dolares/oficial").toURL()
+            val conn = url.openConnection() as HttpURLConnection
+            conn.requestMethod = "GET"
+            conn.setRequestProperty("User-Agent", "Mozilla/5.0")
+            conn.connectTimeout = 5000
+            conn.readTimeout = 5000
+
+            if (conn.responseCode == HttpURLConnection.HTTP_OK) {
+                val response = BufferedReader(InputStreamReader(conn.inputStream)).use { it.readText() }
+                val json = JSONObject(response)
+                val promedio = json.optDouble("promedio", 0.0)
+                if (promedio > 0.0) {
+                    cachedBcv = promedio
+                    lastBcvFetchTime = now
+                    return promedio
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+        return cachedBcv
     }
 }

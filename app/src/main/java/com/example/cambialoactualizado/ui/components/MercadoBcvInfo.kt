@@ -13,6 +13,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.cambialoactualizado.data.model.MarketRates
 import com.example.cambialoactualizado.ui.theme.TextoGris
+import java.util.Locale
 
 @Composable
 fun MercadoBcvInfo(rates: MarketRates, modifier: Modifier = Modifier) {
@@ -23,6 +24,7 @@ fun MercadoBcvInfo(rates: MarketRates, modifier: Modifier = Modifier) {
         Text("Venta COP: ${rates.ventaPesos}", color = TextoGris, fontSize = 10.sp)
         Text("Compra VES: ${rates.compraBolivar}", color = TextoGris, fontSize = 10.sp)
         Text("Venta VES: ${rates.ventaBolivar}", color = TextoGris, fontSize = 10.sp)
-        Text("Tasa BCV: ${rates.bcv}", color = TextoGris, fontSize = 10.sp)
+        val bcvDisplay = if (rates.bcv > 0.0) String.format(Locale.US, "%.2f", rates.bcv) else "${rates.bcv}"
+        Text("Tasa BCV: $bcvDisplay", color = TextoGris, fontSize = 10.sp)
     }
 }
