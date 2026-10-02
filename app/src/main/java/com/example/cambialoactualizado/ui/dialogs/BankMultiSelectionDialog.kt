@@ -35,6 +35,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import com.example.cambialoactualizado.core.constants.formatBankDisplayName
 import com.example.cambialoactualizado.ui.theme.BinanceYellow
 import com.example.cambialoactualizado.ui.theme.TextoGris
 
@@ -48,7 +49,7 @@ fun BankMultiSelectionDialog(
     var tempSelected by remember { mutableStateOf(initialSelected.toSet()) }
     var searchQuery by remember { mutableStateOf("") }
     val filteredBanks = remember(searchQuery, bankList) {
-        bankList.filter { it.replace("_", " ").contains(searchQuery, ignoreCase = true) }
+        bankList.filter { formatBankDisplayName(it).contains(searchQuery, ignoreCase = true) }
     }
 
     Dialog(onDismissRequest = onDismiss) {
@@ -81,7 +82,7 @@ fun BankMultiSelectionDialog(
                 ) {
                     items(filteredBanks) { bank ->
                         val isSelected = tempSelected.contains(bank)
-                        val displayName = bank.replace("_", " ")
+                        val displayName = formatBankDisplayName(bank)
                         Surface(
                             onClick = { tempSelected = if (isSelected) tempSelected - bank else tempSelected + bank },
                             shape = RoundedCornerShape(8.dp),

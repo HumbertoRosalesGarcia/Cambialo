@@ -64,6 +64,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.cambialoactualizado.core.constants.bankOptionsByFiat
 import com.example.cambialoactualizado.core.constants.fiatDetails
+import com.example.cambialoactualizado.core.constants.formatBankDisplayName
 import com.example.cambialoactualizado.core.util.ThousandSeparatorVisualTransformation
 import com.example.cambialoactualizado.core.util.loadFavorites
 import com.example.cambialoactualizado.core.util.saveFavorites
@@ -383,7 +384,7 @@ fun P2PInspectorScreen(onBack: () -> Unit) {
                     ) {
                         val labelText = when {
                             selectedBanks.isEmpty() -> "Pago: Todos"
-                            selectedBanks.size == 1 -> selectedBanks.first().replace("_", " ")
+                            selectedBanks.size == 1 -> formatBankDisplayName(selectedBanks.first())
                             else -> "${selectedBanks.size} Bancos"
                         }
                         Text(labelText, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)

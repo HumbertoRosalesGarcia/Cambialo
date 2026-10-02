@@ -29,7 +29,17 @@ val bankOptionsByFiat = mapOf(
         "BBVA_Provincial", "Banco_de_Venezuela", "BNC", "BOD"
     ),
     "BRL" to listOf(
-        "PIX", "Nubank", "PicPay", "Banco_Inter", "Banco_do_Brasil",
-        "Itau", "Bradesco", "Caixa", "Santander", "Transferencia_Bancaria"
+        "Pix", "BankBrazil", "MercadoPagoNew", "PicPay", "ItauBrazil", "instantPix", "SpecificBank"
     )
 )
+
+fun formatBankDisplayName(bank: String): String {
+    return when (bank) {
+        "BankBrazil" -> "Transferência Bancária"
+        "MercadoPagoNew" -> "Mercado Pago"
+        "ItauBrazil" -> "Itaú"
+        "SpecificBank" -> "Banco Específico"
+        "instantPix" -> "Pix Instant"
+        else -> bank.replace("_", " ")
+    }
+}
